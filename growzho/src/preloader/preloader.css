@@ -1,0 +1,183 @@
+/* Hairline preloader (see Preloader.jsx). Black plates, 1px lines, dashed detail, one ember accent: the same drawing language
+   as the camera and the sector figures. No gradients, glitter, grain or glow. */
+
+.pl {
+  --pl-u: min(100vw, 100svh);            /* the stage's unit: everything scales from the shorter side */
+  --pl-t: calc(var(--pl-u) * 0.18);      /* orbit tile size */
+  --pl-r: calc(var(--pl-u) * 0.245);     /* orbit radius */
+  --pl-h: calc(var(--pl-u) * 0.32);      /* hero tile size */
+  --pl-depth: 0.14;                      /* slab thickness, as a share of the tile */
+  --pl-bar: max(38px, calc(var(--pl-u) * 0.085));
+  --pl-accent: #FF1600;                  /* the preloader's accent: progress line, hero rim, tile flash, status dot */
+  --pl-spin: 48s;
+  --pl-mx: 0; --pl-my: 0; --pl-p: 0;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  overflow: hidden;
+  background: var(--void);
+  color: var(--chalk);
+  font-family: var(--font);
+  user-select: none;
+  -webkit-user-select: none;
+  transition: opacity .9s cubic-bezier(.7, 0, .3, 1) .15s;
+}
+.pl *, .pl *::before, .pl *::after { box-sizing: border-box; }
+.pl[data-phase="lift"] { opacity: 0; pointer-events: none; }
+
+/* ---- the page behind it waits ---- */
+html.preloading { overflow: hidden; }
+html.preloading .rise, html.preloading .gl-fade { animation-play-state: paused; }
+
+/* ---- camera ---- */
+.pl-cam { position: absolute; inset: 0; perspective: calc(var(--pl-u) * 2.2); perspective-origin: 50% 48%; }
+.pl-rig {
+  position: absolute; left: 50%; top: 48%; width: 0; height: 0;
+  transform-style: preserve-3d;
+  transform: rotateX(calc(var(--pl-my) * -11deg)) rotateY(calc(var(--pl-mx) * 14deg));
+}
+.pl-ring { position: absolute; transform-style: preserve-3d; animation: pl-spin var(--pl-spin) linear infinite; }
+.pl-slot {
+  position: absolute;
+  left: calc(var(--pl-t) * -.5); top: calc(var(--pl-t) * -.5);
+  width: var(--pl-t); height: var(--pl-t);
+  transform-style: preserve-3d;
+  transform: translate3d(calc(var(--x) * var(--pl-r)), calc(var(--y) * var(--pl-r)), 0);
+  transition: transform 1.25s cubic-bezier(.65, 0, .25, 1);
+  transition-delay: calc(var(--i) * 70ms);
+}
+.pl[data-phase="forge"] .pl-slot, .pl[data-phase="reveal"] .pl-slot, .pl[data-phase="lift"] .pl-slot {
+  transform: translate3d(0, 0, calc(var(--pl-u) * -.12)) rotateZ(180deg) scale(.55);
+}
+.pl-counter, .pl-bob, .pl-tile, .pl-leaf, .pl-hero, .pl-hero-turn, .pl-hero-bob { position: absolute; inset: 0; transform-style: preserve-3d; }
+.pl-counter { animation: pl-spin var(--pl-spin) linear infinite reverse; }
+.pl-bob { animation: pl-bob 5.5s ease-in-out infinite alternate; }
+.pl-tile {
+  transform: rotateX(var(--rx, 0)) rotateY(var(--ry, 0)) rotateZ(var(--rz, 0));
+  --lit: 0;
+}
+
+/* ---- a tile: outlined slabs for thickness, one flat face with the drawing ---- */
+.pl-layer, .pl-face { position: absolute; inset: 0; border-radius: 20%; }
+.pl-layer {
+  background: var(--void);
+  border: 1px solid var(--carbon);
+  transform: translateZ(calc(var(--pl-t) * var(--pl-depth) * var(--k) * -1));
+}
+.pl-face { background: var(--void); transform: translateZ(.5px); }
+.pl-svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; overflow: visible; }
+.pl-svg :where(rect, path) { fill: none; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1px; }
+.pl-edge.dim { stroke: var(--carbon); }
+.pl-edge.bright { stroke: var(--chalk); opacity: var(--lit); }
+.pl-dash { stroke: var(--carbon); stroke-dasharray: 1 3; }
+.pl-tick { stroke: var(--graphite); }
+.pl-ghost { stroke: var(--carbon); }
+.pl-ink { stroke: var(--chalk); stroke-dasharray: 1; stroke-dashoffset: calc(1 - var(--lit)); }
+/* the social icons fill in solid white (like the Growzho mark) once their outline has been drawn: fill follows --lit, starting at 55% */
+.pl-ink:not(.hero) { fill: var(--chalk); fill-rule: evenodd; fill-opacity: clamp(0, calc((var(--lit) - .55) * 2.2), 1); }
+/* the moment a tile is complete, its dashed frame flashes ember once */
+.pl-tile[data-lit="1"] .pl-dash { animation: pl-flash .9s ease-out; }
+
+/* the orbit racks in from nothing, and is gone before the hero turns */
+.pl-slot .pl-leaf { animation: pl-in 1.4s cubic-bezier(.2, .7, .2, 1) backwards; animation-delay: calc(.15s + var(--i) * .14s); transition: opacity .7s ease; }
+.pl[data-phase="forge"] .pl-slot .pl-leaf, .pl[data-phase="reveal"] .pl-slot .pl-leaf, .pl[data-phase="lift"] .pl-slot .pl-leaf {
+  opacity: 0; transition-delay: calc(.75s + var(--i) * 60ms);
+}
+
+/* ---- the hero tile ---- */
+.pl-hero {
+  inset: auto; left: calc(var(--pl-h) * -.5); top: calc(var(--pl-h) * -.5); width: var(--pl-h); height: var(--pl-h);
+  transform: translateZ(calc(var(--pl-u) * -.5)) scale(.4);
+  transition: transform 1.7s cubic-bezier(.16, 1, .3, 1) .55s;
+  pointer-events: none;
+}
+.pl-hero .pl-layer { transform: translateZ(calc(var(--pl-h) * var(--pl-depth) * var(--k) * -1)); }
+/* the rear slabs warm to ember, so the edge of the mark glows only as a line */
+.pl-hero .pl-layer { border-color: color-mix(in srgb, var(--pl-accent) calc(var(--k) * 100%), var(--carbon)); }
+.pl-hero-turn { transform: rotateY(-180deg) rotateZ(-30deg); transition: transform 1.9s cubic-bezier(.22, 1, .36, 1) .6s; }
+.pl-hero-bob { animation: pl-bob 6s ease-in-out infinite alternate; }
+.pl-hero .pl-tile { transform: none; --lit: 1; }
+.pl-hero .pl-leaf { opacity: 0; transition: opacity .6s ease .6s; }
+.pl-front { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.pl-back {
+  transform: translateZ(calc(var(--pl-h) * var(--pl-depth) * -1 - .5px)) rotateY(180deg);
+  backface-visibility: hidden; -webkit-backface-visibility: hidden;
+}
+.pl-ink.hero { stroke-width: 1.4px; stroke-dashoffset: 1; fill: var(--chalk); fill-rule: evenodd; fill-opacity: 0; }
+
+.pl[data-phase="forge"] .pl-hero, .pl[data-phase="reveal"] .pl-hero { transform: translateZ(0) scale(1); }
+.pl[data-phase="forge"] .pl-hero-turn, .pl[data-phase="reveal"] .pl-hero-turn { transform: rotateX(14deg) rotateY(-20deg) rotateZ(-4deg); }
+.pl[data-phase="forge"] .pl-hero .pl-leaf, .pl[data-phase="reveal"] .pl-hero .pl-leaf, .pl[data-phase="lift"] .pl-hero .pl-leaf { opacity: 1; }
+/* the mark is drawn in with one stroke while the tile turns */
+.pl[data-phase="forge"] .pl-ink.hero, .pl[data-phase="reveal"] .pl-ink.hero, .pl[data-phase="lift"] .pl-ink.hero {
+  animation: pl-draw 1.5s cubic-bezier(.4, 0, .2, 1) .9s forwards, pl-fillin .7s ease 1.9s forwards;
+}
+.pl[data-phase="lift"] .pl-ink.hero { animation: none; stroke-dashoffset: 0; fill-opacity: 1; }
+.pl[data-phase="lift"] .pl-hero {
+  transform: translateZ(calc(var(--pl-u) * 1.6)) scale(1.3);
+  transition: transform 1.1s cubic-bezier(.7, 0, .84, 0);
+}
+.pl[data-phase="lift"] .pl-hero-turn { transform: rotateX(14deg) rotateY(-20deg) rotateZ(-4deg); transition: none; }
+
+/* ---- wordmark ---- */
+.pl-title { position: absolute; left: 0; right: 0; top: calc(48% + var(--pl-h) * .5 + var(--pl-u) * .075); text-align: center; pointer-events: none; }
+.pl-word { display: inline-block; margin: 0; font-size: max(20px, calc(var(--pl-u) * .052)); font-weight: 700; letter-spacing: .42em; text-indent: .42em; line-height: 1; text-transform: uppercase; white-space: nowrap; }
+.pl-letter { display: inline-block; opacity: 0; transform: translateY(.5em); }
+.pl[data-phase="reveal"] .pl-letter, .pl[data-phase="lift"] .pl-letter { animation: pl-letter .8s cubic-bezier(.2, .7, .2, 1) forwards; }
+.pl-caption {
+  margin: calc(var(--pl-u) * .024) 0 0; font-size: max(10px, calc(var(--pl-u) * .016)); letter-spacing: .32em; text-transform: uppercase;
+  color: var(--graphite); opacity: 0; transition: opacity 1s ease .7s, letter-spacing 1.4s cubic-bezier(.2, .7, .2, 1) .7s;
+}
+.pl[data-phase="reveal"] .pl-caption, .pl[data-phase="lift"] .pl-caption { opacity: 1; letter-spacing: .44em; }
+
+/* ---- HUD: hairline rules, not black bars ---- */
+.pl-bar {
+  position: absolute; left: 0; right: 0; height: var(--pl-bar); z-index: 3;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 0 clamp(16px, 4vw, 44px);
+  font-size: max(9px, calc(var(--pl-u) * .0145)); letter-spacing: .24em; text-transform: uppercase; color: var(--graphite); white-space: nowrap;
+  transition: transform 1s cubic-bezier(.7, 0, .3, 1);
+}
+.pl-bar-top { top: 0; border-bottom: 1px solid var(--cinder); transform: translateY(-100%); animation: pl-bar-in 1s cubic-bezier(.16, 1, .3, 1) .1s forwards; }
+.pl-bar-bot { bottom: 0; border-top: 1px solid var(--cinder); transform: translateY(100%); animation: pl-bar-in 1s cubic-bezier(.16, 1, .3, 1) .1s forwards; }
+.pl[data-phase="lift"] .pl-bar-top { animation: none; transform: translateY(-100%); }
+.pl[data-phase="lift"] .pl-bar-bot { animation: none; transform: translateY(100%); }
+.pl-bar b { font-weight: 700; color: var(--chalk); }
+.pl-dot { display: inline-block; width: 6px; height: 6px; margin-right: 10px; border: 1px solid var(--chalk); vertical-align: 1px; animation: pl-blink 1.2s steps(2) infinite; }
+.pl[data-phase="reveal"] .pl-dot, .pl[data-phase="lift"] .pl-dot { animation: none; background: var(--pl-accent); border-color: var(--pl-accent); }
+.pl-track { position: relative; flex: 1; max-width: 420px; height: 1px; background: var(--carbon); }
+.pl-fill { position: absolute; inset: 0; background: var(--pl-accent); transform-origin: 0 50%; transform: scaleX(var(--pl-p)); }
+.pl-ticks { position: absolute; inset: -3px 0; display: flex; justify-content: space-between; }
+.pl-ticks i { width: 1px; height: 7px; background: var(--carbon); }
+.pl-pct { min-width: 4.6em; text-align: right; font-variant-numeric: tabular-nums; }
+.pl-pct b { font-size: 1.5em; letter-spacing: .08em; }
+.pl-sm { display: inline; }
+.pl-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+@keyframes pl-spin { to { transform: rotateZ(360deg); } }
+@keyframes pl-bob {
+  from { transform: translate3d(0, calc(var(--pl-u) * -.008), calc(var(--pl-u) * -.012)); }
+  to { transform: translate3d(0, calc(var(--pl-u) * .008), calc(var(--pl-u) * .02)); }
+}
+@keyframes pl-in { from { opacity: 0; } }
+@keyframes pl-flash { 0% { stroke: var(--pl-accent); stroke-dasharray: none; } 100% { stroke: var(--carbon); stroke-dasharray: 1 3; } }
+@keyframes pl-draw { to { stroke-dashoffset: 0; } }
+@keyframes pl-fillin { to { fill-opacity: 1; } }
+@keyframes pl-letter { to { opacity: 1; transform: none; } }
+@keyframes pl-bar-in { to { transform: none; } }
+@keyframes pl-blink { 50% { opacity: .35; } }
+
+@media (max-width: 520px) { .pl-sm { display: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .pl-ring, .pl-counter, .pl-bob, .pl-hero-bob { animation: none; }
+  .pl-slot { transition: none; }
+  .pl-slot .pl-leaf { animation: none; }
+  .pl-hero, .pl-hero-turn { transition: opacity .4s ease; }
+  .pl-hero-turn { transform: none; }
+  .pl[data-phase="lift"] .pl-hero { transform: translateZ(0) scale(1); transition: none; }
+  .pl[data-phase="forge"] .pl-ink.hero, .pl[data-phase="reveal"] .pl-ink.hero { animation: none; stroke-dashoffset: 0; fill-opacity: 1; }
+  .pl-tile[data-lit="1"] .pl-dash { animation: none; }
+  .pl-letter { transform: none; }
+  .pl[data-phase="reveal"] .pl-letter, .pl[data-phase="lift"] .pl-letter { animation: none; opacity: 1; }
+}
